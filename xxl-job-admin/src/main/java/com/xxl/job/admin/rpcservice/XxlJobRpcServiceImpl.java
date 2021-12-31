@@ -81,7 +81,7 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void JobAdd(XxlJobAddReq xxlJobAddReq) {
+    public Integer jobAdd(XxlJobAddReq xxlJobAddReq) {
         XxlJobInfo xxlJobInfo = new XxlJobInfo();
         BeanUtils.copyProperties(xxlJobAddReq, xxlJobInfo);
 
@@ -97,11 +97,12 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
         if (addResult.getCode() != 200) {
             throw new RuntimeException(addResult.getMsg());
         }
+        return Integer.parseInt(addResult.getContent());
     }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void JobUpdate(XxlJobUpdateReq xxlJobUpdateReq) {
+    public void jobUpdate(XxlJobUpdateReq xxlJobUpdateReq) {
         XxlJobInfo xxlJobInfo = new XxlJobInfo();
         BeanUtils.copyProperties(xxlJobUpdateReq, xxlJobInfo);
 
@@ -120,7 +121,7 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void JobDel(Integer id) {
+    public void jobDel(Integer id) {
         if (ObjectUtils.isEmpty(id) || id == 0) {
             throw new RuntimeException("请输入正确的任务ID，任务ID不能为null或0");
         }
@@ -132,7 +133,7 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void JobStart(Integer id) {
+    public void jobStart(Integer id) {
         if (ObjectUtils.isEmpty(id) || id == 0) {
             throw new RuntimeException("请输入正确的任务ID，任务ID不能为null或0");
         }
@@ -144,7 +145,7 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void JobStop(Integer id) {
+    public void jobStop(Integer id) {
         if (ObjectUtils.isEmpty(id) || id == 0) {
             throw new RuntimeException("请输入正确的任务ID，任务ID不能为null或0");
         }
