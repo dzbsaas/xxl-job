@@ -59,6 +59,75 @@
 			<scope>provided</scope>
 		</dependency>
 
+		<!--核心依赖-->
+		<dependency>
+			<groupId>com.seetech</groupId>
+			<artifactId>core</artifactId>
+			<version>17.7</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.alibaba.cloud</groupId>
+					<artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.cloud</groupId>
+					<artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.cloud</groupId>
+					<artifactId>spring-cloud-starter-openfeign</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.alibaba.cloud</groupId>
+					<artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.zaxxer</groupId>
+					<artifactId>HikariCP</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>mysql</groupId>
+					<artifactId>mysql-connector-java</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.baomidou</groupId>
+					<artifactId>mybatis-plus-boot-starter</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.baomidou</groupId>
+					<artifactId>dynamic-datasource-spring-boot-starter</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-amqp</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>javax.servlet</groupId>
+					<artifactId>javax.servlet-api</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>redis.clients</groupId>
+					<artifactId>jedis</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-data-redis</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.session</groupId>
+					<artifactId>spring-session-data-redis</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.redisson</groupId>
+					<artifactId>redisson</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.xuxueli</groupId>
+					<artifactId>xxl-job-core</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
 	</dependencies>
 
 </project>

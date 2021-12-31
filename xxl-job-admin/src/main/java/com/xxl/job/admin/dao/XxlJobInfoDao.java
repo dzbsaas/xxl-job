@@ -34,6 +34,8 @@ public interface XxlJobInfoDao {
 	public XxlJobInfo loadById(@Param("id") int id);
 	
 	public int update(XxlJobInfo xxlJobInfo);
+
+	public int updateParams(XxlJobInfo xxlJobInfo);
 	
 	public int delete(@Param("id") long id);
 
@@ -45,5 +47,9 @@ public interface XxlJobInfoDao {
 
 	public int scheduleUpdate(XxlJobInfo xxlJobInfo);
 
+	public XxlJobInfo selOneJob(@Param("id") int id);
 
+	public List<XxlJobInfo> businessIdSelect(@Param("id") String id);
+
+	public List<XxlJobInfo> businessIdAndExecutorHandler(@Param("id") String id, @Param("executorHandler") String executorHandler);
 }
