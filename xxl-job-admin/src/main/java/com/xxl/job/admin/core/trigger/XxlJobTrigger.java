@@ -199,11 +199,11 @@ public class XxlJobTrigger {
     }
 
     /**
-     * run executor
+     * run executor  执行调度
      * @param triggerParam
      * @param address
      * @return
-     */
+     *///todo 执行调度
     public static ReturnT<String> runExecutor(TriggerParam triggerParam, String address){
         ReturnT<String> runResult = null;
         try {

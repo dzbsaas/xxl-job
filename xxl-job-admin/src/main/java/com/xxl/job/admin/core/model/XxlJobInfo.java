@@ -20,7 +20,7 @@ public class XxlJobInfo {
     private String author = "xr";        // 负责人
     private String alarmEmail;    // 报警邮件
 
-    private String scheduleType = "CRON";            // 调度类型
+    private String scheduleType = "CRON";            // 调度类型 （FIX_RATE：固定速度，cron:cron表达式，repeat：重复执行（限制执行次数））
     private String scheduleConf;            // 调度配置，值含义取决于调度类型
     private String misfireStrategy = "DO_NOTHING";            // 调度过期策略
 
@@ -42,6 +42,10 @@ public class XxlJobInfo {
     private long triggerLastTime;    // 上次调度时间
     private long triggerNextTime;    // 下次调度时间
     private String relateId;  //业务关联id
+    private Integer runTimes = 1; //运行次数
+
+    private String jobFlag; //任务组标识
+    private Integer intervalTime = 0;//间隔时间
 
 
     public int getId() {
@@ -242,5 +246,29 @@ public class XxlJobInfo {
 
     public void setRelateId(String relateId) {
         this.relateId = relateId;
+    }
+
+    public Integer getRunTimes() {
+        return runTimes;
+    }
+
+    public void setRunTimes(Integer runTimes) {
+        this.runTimes = runTimes;
+    }
+
+    public String getJobFlag() {
+        return jobFlag;
+    }
+
+    public void setJobFlag(String jobFlag) {
+        this.jobFlag = jobFlag;
+    }
+
+    public int getIntervalTime() {
+        return intervalTime;
+    }
+
+    public void setIntervalTime(int intervalTime) {
+        this.intervalTime = intervalTime;
     }
 }

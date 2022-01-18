@@ -1,6 +1,9 @@
 package com.xxl.job.admin.service.impl;
 
+import com.seetech.util.EmptyUtil;
+import com.seetech.util.SnowFlakeKeyUtil;
 import com.xxl.job.admin.core.cron.CronExpression;
+import com.xxl.job.admin.core.model.JobRepeatRecord;
 import com.xxl.job.admin.core.model.XxlJobGroup;
 import com.xxl.job.admin.core.model.XxlJobInfo;
 import com.xxl.job.admin.core.model.XxlJobLogReport;
@@ -24,6 +27,7 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
 import java.text.MessageFormat;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -68,6 +72,9 @@ public class XxlJobServiceImpl implements XxlJobService {
 
     @Override
     public ReturnT<String> add(XxlJobInfo jobInfo) {
+        //填充新的组任务
+        this.checkJobFlag(jobInfo);
+
 
         // valid base
         XxlJobGroup group = xxlJobGroupDao.load(jobInfo.getJobGroup());
@@ -166,6 +173,34 @@ public class XxlJobServiceImpl implements XxlJobService {
         this.executorparamJobId(jobInfo.getId());
 
         return new ReturnT<String>(String.valueOf(jobInfo.getId()));
+    }
+
+    /**
+     * 判断当前任务是不是新的组任务
+     *
+     * @param jobInfo
+     */
+    public void checkJobFlag(XxlJobInfo jobInfo) {
+        if ("repeat".equals(jobInfo.getScheduleType())) { //创建重复执行任务类型
+            //校验必要参数不能为空
+            if (EmptyUtil.isEmpty(jobInfo.getIntervalTime()) || EmptyUtil.isEmpty(jobInfo.getScheduleConf())) {
+                throw new RuntimeException("间隔时间/起始时间不能为空！！");
+            }
+
+            if (StringUtils.isEmpty(jobInfo.getJobFlag())) { //只有新任务的时候 才执行此操作
+                jobInfo.setJobFlag(SnowFlakeKeyUtil.nexIdString());
+
+                //添加任务记录
+                JobRepeatRecord jobRepeatRecord = new JobRepeatRecord();
+                jobRepeatRecord.setJobFlag(jobInfo.getJobFlag()); //任务组标识
+                jobRepeatRecord.setCreateTime(LocalDateTime.now()); //创建时间
+                jobRepeatRecord.setSurplusRunTimes(jobInfo.getRunTimes()); //运行次数
+                jobRepeatRecord.setBeginRunTime(jobInfo.getScheduleConf()); //起始时间
+                jobRepeatRecord.setIntervalTime(jobInfo.getIntervalTime()); //时间间隔
+                jobRepeatRecord.setStatus(200);
+                xxlJobInfoDao.saveJobRepeatRecord(jobRepeatRecord);
+            }
+        }
     }
 
     /**
@@ -330,6 +365,14 @@ public class XxlJobServiceImpl implements XxlJobService {
         xxlJobInfoDao.delete(id);
         xxlJobLogDao.delete(id);
         xxlJobLogGlueDao.deleteByJobId(id);
+        xxlJobInfoDao.delJobRepeatRecord(id);
+
+        //清除任务组表
+        if ("repeat".equals(xxlJobInfo.getScheduleType())) {
+            List<JobRepeatRecord> jobRepeatRecords = xxlJobInfoDao.selectListJobRepeatRecord(xxlJobInfo.getJobFlag());
+            xxlJobInfoDao.delJobRepeatRecord(jobRepeatRecords.get(0).getId());
+        }
+
         return ReturnT.SUCCESS;
     }
 
@@ -478,6 +521,7 @@ public class XxlJobServiceImpl implements XxlJobService {
 
     /**
      * 根据业务id来查询出Job数据
+     *
      * @param relateId 业务id
      * @return
      */
@@ -489,7 +533,8 @@ public class XxlJobServiceImpl implements XxlJobService {
 
     /**
      * 根据业务id和任务执行器executorHandler来查询Job数据
-     * @param relateId 业务id
+     *
+     * @param relateId        业务id
      * @param executorHandler 执行器
      */
     @Override

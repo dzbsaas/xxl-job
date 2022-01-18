@@ -19,6 +19,8 @@ public enum ScheduleTypeEnum {
      */
     FIX_RATE(I18nUtil.getString("schedule_type_fix_rate")),
 
+    repeat(I18nUtil.getString("schedule_type_none"))
+
     /**
      * schedule by fix delay (in seconds)， after the last time
      */

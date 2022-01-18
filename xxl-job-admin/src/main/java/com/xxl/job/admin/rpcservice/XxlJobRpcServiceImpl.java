@@ -4,8 +4,10 @@ import com.alibaba.nacos.common.utils.StringUtils;
 import com.seetech.rpcmodules.xxljob.dto.normal.JobDetails;
 import com.seetech.rpcmodules.xxljob.dto.req.XxlJobAddReq;
 import com.seetech.rpcmodules.xxljob.dto.req.XxlJobUpdateReq;
+import com.seetech.rpcmodules.xxljob.dto.req.XxlRepeatJobAddReq;
 import com.seetech.rpcmodules.xxljob.dto.res.JobParamRes;
 import com.seetech.rpcmodules.xxljob.rpcinterfaces.XxlJobRpcService;
+import com.seetech.util.EmptyUtil;
 import com.xxl.job.admin.core.model.XxlJobInfo;
 import com.xxl.job.admin.service.XxlJobService;
 import com.xxl.job.admin.utils.JavaBeanUtils;
@@ -30,8 +32,8 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
 
     //获取当前任务参数
     @Override
-    public JobParamRes getJobParam() {
-        XxlJobContext xxlJobContext = XxlJobContext.getXxlJobContext();
+    public JobParamRes getJobParam(XxlJobContext xxlJobContext) {
+        //XxlJobContext xxlJobContext = XxlJobContext.getXxlJobContext();
         if (xxlJobContext == null) {
             return null;
         }
@@ -92,6 +94,46 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
         //额外参数
         xxlJobInfo.setExecutorParam(JsonUtils.toJson(jobParmar));
         xxlJobInfo.setRelateId(xxlJobAddReq.getRelateId());
+
+        ReturnT<String> addResult = xxlJobService.add(xxlJobInfo);
+        if (addResult.getCode() != 200) {
+            throw new RuntimeException(addResult.getMsg());
+        }
+        return Integer.parseInt(addResult.getContent());
+    }
+
+    /**
+     * 添加重复任务
+     *
+     * @param repeatJobAddReq 重复任务参数
+     * @return
+     */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public Integer repeatJobAdd(XxlRepeatJobAddReq repeatJobAddReq) {
+        if (EmptyUtil.isEmpty(repeatJobAddReq.getIntervalTime()) || repeatJobAddReq.getIntervalTime() <= 0) {
+            throw new RuntimeException("任务间隔时间不能为空并且不能够小于等于0");
+        }
+        if (EmptyUtil.isEmpty(repeatJobAddReq.getRunTimes()) || repeatJobAddReq.getRunTimes() <= 1) {
+            throw new RuntimeException("重复执行次数不能为空并且不能小于等于1");
+        }
+        if (EmptyUtil.isEmpty(repeatJobAddReq.getScheduleConf())) {
+            throw new RuntimeException("起始时间不能为空并且必须是一个精确的起始时间");
+        }
+
+
+        XxlJobInfo xxlJobInfo = new XxlJobInfo();
+        JavaBeanUtils.copy(repeatJobAddReq, xxlJobInfo);
+        xxlJobInfo.setIntervalTime(repeatJobAddReq.getIntervalTime());
+
+        //业务参数
+        JobParamRes jobParmar = new JobParamRes();
+        jobParmar.setRelateId(repeatJobAddReq.getRelateId());
+        jobParmar.setExtraRelateInfo(repeatJobAddReq.getExtraRelateInfo());
+        //额外参数
+        xxlJobInfo.setExecutorParam(JsonUtils.toJson(jobParmar));
+        xxlJobInfo.setRelateId(repeatJobAddReq.getRelateId());
+        xxlJobInfo.setScheduleType("repeat");
 
         ReturnT<String> addResult = xxlJobService.add(xxlJobInfo);
         if (addResult.getCode() != 200) {
