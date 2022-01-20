@@ -2,6 +2,7 @@ package com.xxl.job.admin.service.impl;
 
 import com.seetech.util.EmptyUtil;
 import com.seetech.util.SnowFlakeKeyUtil;
+import com.seetech.util.TimeToCronUtil;
 import com.xxl.job.admin.core.cron.CronExpression;
 import com.xxl.job.admin.core.model.JobRepeatRecord;
 import com.xxl.job.admin.core.model.XxlJobGroup;
@@ -11,6 +12,8 @@ import com.xxl.job.admin.core.route.ExecutorRouteStrategyEnum;
 import com.xxl.job.admin.core.scheduler.MisfireStrategyEnum;
 import com.xxl.job.admin.core.scheduler.ScheduleTypeEnum;
 import com.xxl.job.admin.core.thread.JobScheduleHelper;
+import com.xxl.job.admin.core.thread.JobTriggerPoolHelper;
+import com.xxl.job.admin.core.trigger.TriggerTypeEnum;
 import com.xxl.job.admin.core.util.I18nUtil;
 import com.xxl.job.admin.dao.*;
 import com.xxl.job.admin.service.XxlJobService;
@@ -27,6 +30,7 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
 import java.text.MessageFormat;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -194,7 +198,7 @@ public class XxlJobServiceImpl implements XxlJobService {
                 JobRepeatRecord jobRepeatRecord = new JobRepeatRecord();
                 jobRepeatRecord.setJobFlag(jobInfo.getJobFlag()); //任务组标识
                 jobRepeatRecord.setCreateTime(LocalDateTime.now()); //创建时间
-                jobRepeatRecord.setSurplusRunTimes(jobInfo.getRunTimes()); //运行次数
+                jobRepeatRecord.setSurplusRunTimes(0); //运行次数
                 jobRepeatRecord.setBeginRunTime(jobInfo.getScheduleConf()); //起始时间
                 jobRepeatRecord.setIntervalTime(jobInfo.getIntervalTime()); //时间间隔
                 jobRepeatRecord.setStatus(200);
@@ -388,6 +392,16 @@ public class XxlJobServiceImpl implements XxlJobService {
 
         // next trigger time (5s后生效，避开预读周期)
         long nextTriggerTime = 0;
+        if (scheduleTypeEnum != ScheduleTypeEnum.FIX_RATE) {
+            LocalDateTime nowDate = LocalDateTime.now();
+            LocalDateTime jobTime = TimeToCronUtil.cronAndLocalTime(xxlJobInfo.getScheduleConf());
+            //下一次执行时间比在当前时间之前 或者 时间偏移量小于3s 则直接执行一次当前任务
+            if (Duration.between(nowDate, jobTime).toMillis() < 5000) {
+                //立即执行一次
+                JobTriggerPoolHelper.trigger(xxlJobInfo.getId(), TriggerTypeEnum.MANUAL, -1, null, xxlJobInfo.getExecutorParam(), "");
+                return ReturnT.SUCCESS;
+            }
+        }
         try {
             Date nextValidTime = JobScheduleHelper.generateNextValidTime(xxlJobInfo, new Date(System.currentTimeMillis() + JobScheduleHelper.PRE_READ_MS));
             if (nextValidTime == null) {
@@ -541,5 +555,13 @@ public class XxlJobServiceImpl implements XxlJobService {
     public ReturnT<List<XxlJobInfo>> businessIdAndExecutorHandler(String relateId, String executorHandler) {
         List<XxlJobInfo> xxlJobInfos = xxlJobInfoDao.businessIdAndExecutorHandler(relateId, executorHandler);
         return new ReturnT<>(xxlJobInfos);
+    }
+
+
+    public static void main(String[] args) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime localDateTime = now.plusSeconds(3);
+        Duration between = Duration.between(localDateTime, now);
+        System.out.println(between.toMillis());
     }
 }

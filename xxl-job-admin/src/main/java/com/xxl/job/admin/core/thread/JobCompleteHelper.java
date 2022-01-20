@@ -14,6 +14,7 @@ import com.xxl.job.admin.service.XxlJobService;
 import com.xxl.job.core.biz.model.HandleCallbackParam;
 import com.xxl.job.core.biz.model.ReturnT;
 import com.xxl.job.core.util.DateUtil;
+import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -180,6 +181,7 @@ public class JobCompleteHelper {
     }
 
     //todo 执行器执行完成回调
+    @SneakyThrows
     private ReturnT<String> callback(HandleCallbackParam handleCallbackParam) {
         // valid log item
         XxlJobLog log = XxlJobAdminConfig.getAdminConfig().getXxlJobLogDao().load(handleCallbackParam.getLogId());
@@ -208,9 +210,19 @@ public class JobCompleteHelper {
 
         //只有当是重复任务类型的时候 才执行此逻辑
         XxlJobInfo xxlJobInfo = xxlJobInfoDao.loadById(log.getJobId());
-        if (EmptyUtil.isNotEmpty(xxlJobInfo)){
-            if ("repeat".equals(xxlJobInfo.getScheduleType())) {
-                this.jobRepeatRecord(xxlJobInfo.getJobFlag(), log.getHandleCode(), xxlJobInfo);
+        if (EmptyUtil.isNotEmpty(xxlJobInfo)) {
+            List<JobRepeatRecord> jobRepeatRecords = xxlJobInfoDao.selectListJobRepeatRecord(xxlJobInfo.getJobFlag());
+            if (log.getHandleCode() == 200) {
+                if (EmptyUtil.isNotEmpty(jobRepeatRecords)) {
+                    if ("repeat".equals(xxlJobInfo.getScheduleType())) {
+                        this.changeScheduleType(xxlJobInfo, jobRepeatRecords);
+                    }
+                    if ("FIX_RATE".equals(xxlJobInfo.getScheduleType())) {
+                        this.changeScheduleTime(xxlJobInfo, jobRepeatRecords);
+                    }
+                }
+            } else {
+                xxlJobInfoDao.updateJobRepeatRecord(jobRepeatRecords.get(0).getId(), jobRepeatRecords.get(0).getSurplusRunTimes(), 500);
             }
         }
 
@@ -218,63 +230,92 @@ public class JobCompleteHelper {
     }
 
     /**
-     * 重复任务逻辑
+     * 将任务改变为固定速率
      *
-     * @param jobFlag 任务组标识
-     * @param code    当前任务执行状态
+     * @param xxlJobInfo
+     * @param jobRepeatRecords
      */
-    private void jobRepeatRecord(String jobFlag, int code, XxlJobInfo xxlJobInfo) {
-        if (EmptyUtil.isNotEmpty(jobFlag)) {
-            //查询出当前任务组
-            List<JobRepeatRecord> jobRepeatRecords = xxlJobInfoDao.selectListJobRepeatRecord(jobFlag);
-            if (jobRepeatRecords.size() > 1) {
-                throw new RuntimeException("系统错误！！在系统记录中同一个任务组只允许有一个！！");
-            }
-            JobRepeatRecord jobRepeatRecord = jobRepeatRecords.get(0);
-            if (code == 200) { //当前任务执行成功
-                this.runSuccess(jobRepeatRecord, xxlJobInfo);
-            } else {//当前任务执行失败
-                this.runFail(jobRepeatRecord);
-            }
-        }
+    public void changeScheduleType(XxlJobInfo xxlJobInfo, List<JobRepeatRecord> jobRepeatRecords) {
+        xxlJobInfo.setScheduleType("FIX_RATE");
+        xxlJobInfo.setScheduleConf(String.valueOf(xxlJobInfo.getIntervalTime()));
+        xxlJobService.update(xxlJobInfo);
+        xxlJobService.start(xxlJobInfo.getId());
+        xxlJobInfoDao.updateJobRepeatRecord(jobRepeatRecords.get(0).getId(), jobRepeatRecords.get(0).getSurplusRunTimes() + 1, 200);
     }
 
-    /**
-     * 当前任务运行成功
-     *
-     * @param jobRepeatRecord 当前组参数
-     */
-    public void runSuccess(JobRepeatRecord jobRepeatRecord, XxlJobInfo xxlJobInfo) {
-        int surplusRunTimes = jobRepeatRecord.getSurplusRunTimes() - 1;  //剩余的次数
-        String beginRunTime = jobRepeatRecord.getBeginRunTime();     //起始时间
-        int intervalTime = jobRepeatRecord.getIntervalTime();     //间隔时间
-        if (surplusRunTimes > 0) { //重复执行任务还未结束
-            JobRepeatRecord jobRepeatRecordNew = new JobRepeatRecord();
-            jobRepeatRecordNew.setId(jobRepeatRecord.getId());
-            jobRepeatRecordNew.setSurplusRunTimes(surplusRunTimes);//剩余次数
-            jobRepeatRecordNew.setStatus(200);
 
-            Integer runTimes = xxlJobInfo.getRunTimes();
-            //计算出下次运行的时间
-            LocalDateTime nextRunTime =
-                    TimeToCronUtil.cronAndLocalTime(beginRunTime)
-                            .plusSeconds((long) (runTimes - surplusRunTimes + 1) * intervalTime);
-            //更新记录
-            xxlJobInfoDao.updateJobRepeatRecord(jobRepeatRecord.getId(), surplusRunTimes, 200);
-            //获取当前时间
-            LocalDateTime nowDate = LocalDateTime.now();
-            if (nextRunTime.isBefore(nowDate) || nextRunTime.isEqual(nowDate)) {//下一次执行时间比在当前时间之前
-                //立即执行一次
-                JobTriggerPoolHelper.trigger(xxlJobInfo.getId(), TriggerTypeEnum.MANUAL, -1, null, "", "");
-            } else { //下一次执行时间比在当前时间之后 （创建下一次的任务规则）
-                xxlJobInfo.setScheduleConf(TimeToCronUtil.cronAndLocalTime(nextRunTime));
-                xxlJobService.update(xxlJobInfo);
-                xxlJobService.start(xxlJobInfo.getId());
-            }
-        } else if (surplusRunTimes == 0) {
+    public void changeScheduleTime(XxlJobInfo xxlJobInfo, List<JobRepeatRecord> jobRepeatRecords) {
+        Integer a = jobRepeatRecords.get(0).getSurplusRunTimes() + 1;
+        xxlJobInfoDao.updateJobRepeatRecord(jobRepeatRecords.get(0).getId(), a, 200);
+        if (a >= xxlJobInfo.getRunTimes()) {
             xxlJobService.remove(xxlJobInfo.getId());
+            xxlJobInfoDao.delJobRepeatRecord(jobRepeatRecords.get(0).getId());
         }
     }
+
+
+//    /**
+//     * 重复任务逻辑
+//     *
+//     * @param jobFlag 任务组标识
+//     * @param code    当前任务执行状态
+//     */
+//    private void jobRepeatRecord(String jobFlag, int code, XxlJobInfo xxlJobInfo) {
+//        if (EmptyUtil.isNotEmpty(jobFlag)) {
+//            //查询出当前任务组
+//            List<JobRepeatRecord> jobRepeatRecords = xxlJobInfoDao.selectListJobRepeatRecord(jobFlag);
+//            if (jobRepeatRecords.size() > 1) {
+//                throw new RuntimeException("系统错误！！在系统记录中同一个任务组只允许有一个！！");
+//            }
+//            JobRepeatRecord jobRepeatRecord = jobRepeatRecords.get(0);
+//            if (code == 200) { //当前任务执行成功
+//                this.runSuccess(jobRepeatRecord, xxlJobInfo);
+//            } else {//当前任务执行失败
+//                this.runFail(jobRepeatRecord);
+//            }
+//        }
+//    }
+//
+//    /**
+//     * 当前任务运行成功
+//     *
+//     * @param jobRepeatRecord 当前组参数
+//     */
+//    public void runSuccess(JobRepeatRecord jobRepeatRecord, XxlJobInfo xxlJobInfo) {
+//        int surplusRunTimes = jobRepeatRecord.getSurplusRunTimes() - 1;  //剩余的次数
+//        String beginRunTime = jobRepeatRecord.getBeginRunTime();     //起始时间
+//        int intervalTime = jobRepeatRecord.getIntervalTime();     //间隔时间
+//        if (surplusRunTimes > 0) { //重复执行任务还未结束
+//            JobRepeatRecord jobRepeatRecordNew = new JobRepeatRecord();
+//            jobRepeatRecordNew.setId(jobRepeatRecord.getId());
+//            jobRepeatRecordNew.setSurplusRunTimes(surplusRunTimes);//剩余次数
+//            jobRepeatRecordNew.setStatus(200);
+//
+//            Integer runTimes = xxlJobInfo.getRunTimes();
+//            //计算出下次运行的时间
+//            LocalDateTime nextRunTime =
+//                    TimeToCronUtil.cronAndLocalTime(beginRunTime)
+//                            .plusSeconds(intervalTime);
+//            //更新记录
+//            xxlJobInfoDao.updateJobRepeatRecord(jobRepeatRecord.getId(), surplusRunTimes, 200, TimeToCronUtil.cronAndLocalTime(nextRunTime));
+//            //获取当前时间
+//            LocalDateTime nowDate = LocalDateTime.now();
+//            if (nextRunTime.isBefore(nowDate) || nextRunTime.isEqual(nowDate)) {//下一次执行时间比在当前时间之前
+//                //立即执行一次
+//                JobTriggerPoolHelper.trigger(xxlJobInfo.getId(), TriggerTypeEnum.MANUAL, -1, null, xxlJobInfo.getExecutorParam(), "");
+//                System.out.println("立即执行一次！！！");
+//            } else { //下一次执行时间比在当前时间之后 （创建下一次的任务规则）
+//                xxlJobInfo.setScheduleConf(TimeToCronUtil.cronAndLocalTime(nextRunTime));
+//                xxlJobService.update(xxlJobInfo);
+//                xxlJobService.start(xxlJobInfo.getId());
+//                System.out.println("定时执行！！！");
+//            }
+//        } else if (surplusRunTimes == 0) {
+//            System.out.println("定时重复任务完成！！");
+//            xxlJobService.remove(xxlJobInfo.getId());
+//        }
+//    }
+//
 
     /**
      * 执行器执行失败
@@ -282,6 +323,7 @@ public class JobCompleteHelper {
      * @param jobRepeatRecord
      */
     public void runFail(JobRepeatRecord jobRepeatRecord) {
+        System.out.println("定时任务失败！！");
         xxlJobInfoDao.updateJobRepeatRecord(jobRepeatRecord.getId(), jobRepeatRecord.getSurplusRunTimes(), 500);
     }
 
