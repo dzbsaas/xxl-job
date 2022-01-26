@@ -396,7 +396,7 @@ public class XxlJobServiceImpl implements XxlJobService {
             LocalDateTime nowDate = LocalDateTime.now();
             LocalDateTime jobTime = TimeToCronUtil.cronAndLocalTime(xxlJobInfo.getScheduleConf());
             //下一次执行时间比在当前时间之前 或者 时间偏移量小于3s 则直接执行一次当前任务
-            if (Duration.between(nowDate, jobTime).toMillis() < 5000) {
+            if (Duration.between(nowDate, jobTime).toMillis() < 4000) {
                 //立即执行一次
                 JobTriggerPoolHelper.trigger(xxlJobInfo.getId(), TriggerTypeEnum.MANUAL, -1, null, xxlJobInfo.getExecutorParam(), "");
                 return ReturnT.SUCCESS;
