@@ -1,12 +1,8 @@
 package com.xxl.job.admin.rpcservice;
 
 import com.alibaba.nacos.common.utils.StringUtils;
-import com.seetech.rpcmodules.xxljob.dto.normal.JobDetails;
-import com.seetech.rpcmodules.xxljob.dto.req.XxlJobAddReq;
-import com.seetech.rpcmodules.xxljob.dto.req.XxlJobUpdateReq;
-import com.seetech.rpcmodules.xxljob.dto.req.XxlRepeatJobAddReq;
-import com.seetech.rpcmodules.xxljob.dto.res.JobParamRes;
-import com.seetech.rpcmodules.xxljob.rpcinterfaces.XxlJobRpcService;
+
+
 import com.seetech.util.EmptyUtil;
 import com.xxl.job.admin.core.model.XxlJobInfo;
 import com.xxl.job.admin.service.XxlJobService;
@@ -14,7 +10,12 @@ import com.xxl.job.admin.utils.JavaBeanUtils;
 import com.xxl.job.admin.utils.JsonUtils;
 import com.xxl.job.core.biz.model.ReturnT;
 import com.xxl.job.core.context.XxlJobContext;
-import lombok.SneakyThrows;
+import com.xxl.job.exposeds.dto.normal.JobDetails;
+import com.xxl.job.exposeds.dto.req.XxlJobAddReq;
+import com.xxl.job.exposeds.dto.req.XxlJobUpdateReq;
+import com.xxl.job.exposeds.dto.req.XxlRepeatJobAddReq;
+import com.xxl.job.exposeds.dto.res.JobParamRes;
+import com.xxl.job.exposeds.xxljobrpcs.XxlJobRpcService;
 import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Propagation;
@@ -51,7 +52,6 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
      * @param relateId 业务id
      * @return
      */
-    @SneakyThrows
     @Override
     public List<JobDetails> businessIdSelect(String relateId) {
         if (ObjectUtils.isEmpty(relateId)) {
@@ -61,7 +61,14 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
         if (xxlJobInfoReturn.getCode() != 200) {
             throw new RuntimeException(xxlJobInfoReturn.getMsg());
         }
-        return JavaBeanUtils.copy(xxlJobInfoReturn.getContent(), JobDetails.class);
+        try {
+            return JavaBeanUtils.copy(xxlJobInfoReturn.getContent(), JobDetails.class);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
@@ -71,14 +78,20 @@ public class XxlJobRpcServiceImpl implements XxlJobRpcService {
      * @param executorHandler 执行器名称
      * @return
      */
-    @SneakyThrows
     @Override
     public List<JobDetails> businessIdSelect(String relateId, String executorHandler) {
         ReturnT<List<XxlJobInfo>> xxlJobInfoReturn = xxlJobService.businessIdAndExecutorHandler(relateId, executorHandler);
         if (xxlJobInfoReturn.getCode() != 200) {
             throw new RuntimeException(xxlJobInfoReturn.getMsg());
         }
-        return JavaBeanUtils.copy(xxlJobInfoReturn.getContent(), JobDetails.class);
+        try {
+            return JavaBeanUtils.copy(xxlJobInfoReturn.getContent(), JobDetails.class);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
